@@ -120,6 +120,7 @@ class Deck(object):
             self.step1()
             self.step2()
             self.step3()
+            self.step4()
             self.step4_5(convert_to_num(c))
         print(f"[+] SHUFFLED Deck: {self.cartas}")
 
