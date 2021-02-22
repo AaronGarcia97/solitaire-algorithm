@@ -1,6 +1,40 @@
 # Algoritmo Solitaire
 from pathlib import Path
 
+INITIAL_LETTER = ord('A')
+BASE = 26
+
+# UTILITY
+# bp = boilerplate
+def LOG_FORMAT(msg, bp=''):
+    i = 0
+    output = f'[+] {bp}'
+    for c in msg:
+        mod = i % 5
+        if mod == 0:
+            output += ' '
+        output += c
+        i += 1
+    print(output)
+
+# when 'B', num=2, B_ascii=INITIAL_LETTER+num-1
+def convert_to_letter(num):
+    return chr(INITIAL_LETTER + num - 1)
+
+def convert_to_base(num):
+        # NEW impl: ignoring pdf, using longer deck
+        mod = num % BASE
+        c = BASE if mod == 0 else mod
+        return c
+
+# receive 'A' return 1 ... 'Z' return 26
+def convert_to_num(letter):
+    return ord(letter) - INITIAL_LETTER + 1
+
+# remove everything but letters
+def filter_string(s):
+    return ''.join([c.upper() for c in s if c.isalpha()])
+
 class Reader(object):
 
     @staticmethod
@@ -13,18 +47,6 @@ class Reader(object):
         with open(path.absolute(), 'r') as f:
             return f.read().strip()
 
-class Passphrase(object):
-
-    def __init__(self, s):
-        print('s')
-        self.passphrase = s
-        self.curr = 0
-    
-    def get_next_amount(self):
-        if self.curr >= len(self.passphrase):
-            self.curr = 0
-        return ord(self.passphrase[self.curr])
-
 class Deck(object):
     
     def __init__(self):
@@ -33,8 +55,8 @@ class Deck(object):
         self.initial_cartas = self.cartas.copy()
         self.curr_keystream = -1
         self.keystreams = []
-        self.passphrase = Passphrase(Reader.leer_archivo(Path("./passphrase.txt")).replace(' ', '').upper())
-        print(f"[LOADED] Cards: {self.cartas} | Size: {self.size}")
+        self.passphrase = filter_string(Reader.leer_archivo(Path("./passphrase.txt")).replace(' ', ''))
+        print(f"[+]   LOADED Deck: {self.cartas} | Size: {self.size}")
 
     def set_deck(self, arr):
         self.joker_1 = 53
@@ -93,6 +115,14 @@ class Deck(object):
     def set_curr_keystream(self, k):
         self.curr_keystream = k
 
+    def shuffle(self):
+        for c in self.passphrase:
+            self.step1()
+            self.step2()
+            self.step3()
+            self.step4_5(convert_to_num(c))
+        print(f"[+] SHUFFLED Deck: {self.cartas}")
+
     def step1(self):
         i = self.cartas.index(self.joker_1)
         self.swap(i, i+1)
@@ -107,43 +137,38 @@ class Deck(object):
         self.triple_cut(joker_2_i, joker_1_i)
 
     def step4(self):
+        bot_card = self.cartas[-1]
+        # if it's joker_1 or joker_2, use joker_1 value
+        bot_card = self.joker_1 if bot_card == self.joker_2 else bot_card
         self.bring_top_n(self.cartas[-1])
 
-    def step4_5(self):
-        if len(self.passphrase.passphrase) > 0:
-            self.bring_top_n(self.passphrase.get_next_amount())
+    # secret passphrase shuffle step
+    def step4_5(self, amount):
+        self.bring_top_n(amount)
 
     def step5(self):
+        curr_key = self.get_curr_keystream()
+        if curr_key in [self.joker_1, self.joker_2]:
+            # try again, joker is keystream
+            return False
         self.set_curr_keystream(self.get_curr_keystream())
         self.keystreams.append(self.curr_keystream)
-
-# UTILITY
-# bp = boilerplate
-def LOG_FORMAT(msg, bp=''):
-    i = 0
-    output = f'[+] {bp}'
-    for c in msg:
-        mod = i % 5
-        if mod == 0:
-            output += ' '
-        output += c
-        i += 1
-    print(output)
+        return True
 
 class Runner(object):
-    BASE = 26
-    INITIAL_LETTER = ord('A')
     def __init__(self, deck: Deck):
         self.deck = deck
         self.alphabet = self.create_alphabet()
 
     def run(self):
-        self.deck.step1()
-        self.deck.step2()
-        self.deck.step3()
-        self.deck.step4()
-        self.deck.step4_5() # sec passphrase
-        self.deck.step5()
+        keep_trying = True
+        while keep_trying:
+            self.deck.step1()
+            self.deck.step2()
+            self.deck.step3()
+            self.deck.step4()
+            # self.deck.step4_5() # sec passphrase <= mistake, only use on shuffle
+            keep_trying = not self.deck.step5()
         # print(f"Keystream: {self.deck.get_curr_keystream()}\n{self.deck.cartas}")
     
     def generate_n_keystreams(self, n, reset_deck=False):
@@ -157,13 +182,9 @@ class Runner(object):
     def create_alphabet(self):
         # create alphabet
         alph = {}
-        for i in range(self.INITIAL_LETTER, self.INITIAL_LETTER+self.BASE):
-           alph[chr(i)] = i-self.INITIAL_LETTER+1 #A=1, B=2 ... Z=26
+        for i in range(INITIAL_LETTER, INITIAL_LETTER+BASE):
+           alph[chr(i)] = i-INITIAL_LETTER+1 #A=1, B=2 ... Z=26
         return alph
-    
-    # when 'B', num=2, B_ascii=INITIAL_LETTER+num-1
-    def convert_to_letter(self, num):
-        return chr(self.INITIAL_LETTER + num - 1)
     
     def convert_to_nums(self, msg):
         return [self.alphabet[c] for c in msg]
@@ -175,20 +196,6 @@ class Runner(object):
             # if diff > 0: we need more keystreams, gen them, else dont
             diff = len(msg_padded) - len(self.deck.keystreams)
             return self.generate_n_keystreams(diff)
-
-    def convert_to_base(self, num):
-        # NEW impl: ignoring pdf, using longer deck
-        mod = num % self.BASE
-        c = self.BASE if mod == 0 else mod
-        return c
-        # OLD impl: following pdf
-        # sum is higher than upper limit => 26
-        if num > self.BASE:
-            return num - self.BASE
-        # subtraction is lower than lower limit => 1
-        if num < 1:
-            return num + self.BASE
-        return num
 
     def convert_to_padded_msg(self, msg):
         msg_caps = ''.join([c.upper() for c in msg if c.upper() in self.alphabet])
@@ -206,9 +213,9 @@ class Runner(object):
         nums_arr = self.convert_to_nums(msg_padded)
         for i in range(len(nums_arr)):
             summ = nums_arr[i] + keystreams[i]
-            # convert sum to base self.BASE
-            summ = self.convert_to_base(summ)
-            encoded_msg_arr.append(self.convert_to_letter(summ))
+            # convert sum to base BASE
+            summ = convert_to_base(summ)
+            encoded_msg_arr.append(convert_to_letter(summ))
         output = ''.join(encoded_msg_arr)
         LOG_FORMAT(output, bp=' Encoded:')
         return output
@@ -219,9 +226,9 @@ class Runner(object):
         keystreams = self.gen_missing_keystreams(msg, gen_new_keystreams)
         for i in range(len(nums_arr)):
             subtr = nums_arr[i] - keystreams[i]
-            # convert to base self.BASE, we convert result of substraction instead of top num, ss
-            subtr = self.convert_to_base(subtr)
-            decoded_msg_arr.append(self.convert_to_letter(subtr))
+            # convert to base BASE, we convert result of substraction instead of top num, ss
+            subtr = convert_to_base(subtr)
+            decoded_msg_arr.append(convert_to_letter(subtr))
         output = ''.join(decoded_msg_arr)
         LOG_FORMAT(output, bp=' Decoded:')
         return output
@@ -229,4 +236,5 @@ class Runner(object):
 
 if __name__ == "__main__":
     d = Deck()
+    d.shuffle()
     r = Runner(d)
