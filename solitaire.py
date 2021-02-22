@@ -22,18 +22,29 @@ def convert_to_letter(num):
     return chr(INITIAL_LETTER + num - 1)
 
 def convert_to_base(num):
-        # NEW impl: ignoring pdf, using longer deck
-        mod = num % BASE
-        c = BASE if mod == 0 else mod
-        return c
+    mod = num % BASE
+    return BASE if mod == 0 else mod
 
 # receive 'A' return 1 ... 'Z' return 26
 def convert_to_num(letter):
     return ord(letter) - INITIAL_LETTER + 1
 
+# receives string returns array of nums, "ABCD" => "1234", only for caps
+def convert_to_nums(msg):
+    return [convert_to_num(c) for c in msg]
+
+# pads msg with 'X's to a multiple of 5
+def convert_to_padded_msg(msg):
+    msg_caps = ''.join([c.upper() for c in msg if c.isalpha()])
+    LOG_FORMAT(msg_caps, bp='!Padding:')
+    msg_padded = msg_caps + ''.join(['X' for _ in range(5 - len(msg_caps) % 5)])
+    LOG_FORMAT(msg_padded, bp=' Padding:')
+    return msg_padded
+
 # remove everything but letters
 def filter_string(s):
     return ''.join([c.upper() for c in s if c.isalpha()])
+
 
 class Reader(object):
 
@@ -46,6 +57,7 @@ class Reader(object):
     def leer_archivo(path: Path):
         with open(path.absolute(), 'r') as f:
             return f.read().strip()
+
 
 class Deck(object):
     
@@ -156,10 +168,10 @@ class Deck(object):
         self.keystreams.append(self.curr_keystream)
         return True
 
+
 class Runner(object):
     def __init__(self, deck: Deck):
         self.deck = deck
-        self.alphabet = self.create_alphabet()
 
     def run(self):
         keep_trying = True
@@ -172,46 +184,30 @@ class Runner(object):
             keep_trying = not self.deck.step5()
         # print(f"Keystream: {self.deck.get_curr_keystream()}\n{self.deck.cartas}")
     
-    def generate_n_keystreams(self, n, reset_deck=False):
+    def gen_n_keystreams(self, n, reset_deck=False):
         if reset_deck:
             self.deck.reset_deck()
+            self.deck.shuffle()
         for _ in range(n):
             self.run()
         print(f"[+] {0 if n < 0 else n} keystreams generated.")
         return self.deck.keystreams.copy()
 
-    def create_alphabet(self):
-        # create alphabet
-        alph = {}
-        for i in range(INITIAL_LETTER, INITIAL_LETTER+BASE):
-           alph[chr(i)] = i-INITIAL_LETTER+1 #A=1, B=2 ... Z=26
-        return alph
-    
-    def convert_to_nums(self, msg):
-        return [self.alphabet[c] for c in msg]
-
     def gen_missing_keystreams(self, msg_padded, gen_new_keystreams=False):
         if gen_new_keystreams:
-            return self.generate_n_keystreams(len(msg_padded), reset_deck=gen_new_keystreams)
+            return self.gen_n_keystreams(len(msg_padded), reset_deck=gen_new_keystreams)
         else:
             # if diff > 0: we need more keystreams, gen them, else dont
             diff = len(msg_padded) - len(self.deck.keystreams)
-            return self.generate_n_keystreams(diff)
+            return self.gen_n_keystreams(diff)
 
-    def convert_to_padded_msg(self, msg):
-        msg_caps = ''.join([c.upper() for c in msg if c.upper() in self.alphabet])
-        LOG_FORMAT(msg_caps, bp='!Padding:')
-        msg_padded = msg_caps + ''.join(['X' for _ in range(5 - len(msg_caps) % 5)])
-        LOG_FORMAT(msg_padded, bp=' Padding:')
-        return msg_padded
-
-    # new_keystreams=True => resets deck and gens new keystreams
+    # new_keystreams=True => resets deck, shuffles, and gens new keystreams
     def encode(self, msg, gen_new_keystreams=False):
         encoded_msg_arr = []
         print(f'[+] Encoding: {msg}.')
-        msg_padded = self.convert_to_padded_msg(msg)
+        msg_padded = convert_to_padded_msg(msg)
         keystreams = self.gen_missing_keystreams(msg_padded, gen_new_keystreams)
-        nums_arr = self.convert_to_nums(msg_padded)
+        nums_arr = convert_to_nums(msg_padded)
         for i in range(len(nums_arr)):
             summ = nums_arr[i] + keystreams[i]
             # convert sum to base BASE
@@ -221,9 +217,10 @@ class Runner(object):
         LOG_FORMAT(output, bp=' Encoded:')
         return output
 
+    # new_keystreams=True => resets deck, shuffles and gens new keystreams
     def decode(self, msg, gen_new_keystreams=False):
         decoded_msg_arr = []
-        nums_arr = self.convert_to_nums(msg)
+        nums_arr = convert_to_nums(msg)
         keystreams = self.gen_missing_keystreams(msg, gen_new_keystreams)
         for i in range(len(nums_arr)):
             subtr = nums_arr[i] - keystreams[i]
