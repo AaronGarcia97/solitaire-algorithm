@@ -121,6 +121,7 @@ class Deck(object):
 
     def get_curr_keystream(self):
         i = self.cartas[0]
+        i = self.joker_1 if i == self.joker_2 else i
         # we don't add +1 cause it's 0 indexed
         return self.cartas[i]
 
