@@ -10,17 +10,37 @@ This passphrase is stored in `passphrase.txt`, this is the "key", so for example
 - `argparse`
 
 ### Instructions
-**Encrypt**: `python3 solitaire.py -e "HODL DOGE COIN. 2021"`   
+## 
+**Encrypt**:    
+`python3 solitaire.py -e "HODL DOGE COIN. 2021"`   
+    
 ![Encrypt](https://i.imgur.com/WzRb3L3.png)   
-**Decrypt**: `python3 solitaire.py -d "RFNFNQIDSSOPBHP"`   
-![Decrypt](https://i.imgur.com/N3bo55P.png)   
-**Encrypt Verbose**: `python3 solitaire.py -e -v "HODL DOGE COIN. 2021"`   
-![Encrypt w. Verbosity](https://i.imgur.com/lb36xDX.png)   
-**Decrypt Verbose**: `python3 solitaire.py -d -v "RFNFNQIDSSOPBHP"`   
-![Decrypt w. Verbosity](https://i.imgur.com/DD0eugG.png)   
-**Both Encrypt and Decrypt**: `python3 solitaire.py -e "HOLD DOGE COIN. 2021" | xargs python3 solitaire.py -d`   
-![Encrypt and Decrypt](https://i.imgur.com/k43mPtG.png)   
-
+## 
+**Decrypt**:   
+     
+`python3 solitaire.py -d "RFNFNQIDSSOPBHP"`   
+     
+![Decrypt](https://i.imgur.com/N3bo55P.png)      
+## 
+**Encrypt Verbose**:    
+      
+`python3 solitaire.py -e -v "HODL DOGE COIN. 2021"`    
+     
+![Encrypt w. Verbosity](https://i.imgur.com/lb36xDX.png)       
+## 
+**Decrypt Verbose**:      
+      
+`python3 solitaire.py -d -v "RFNFNQIDSSOPBHP"`    
+     
+![Decrypt w. Verbosity](https://i.imgur.com/DD0eugG.png)      
+## 
+**Both Encrypt and Decrypt**:      
+     
+`python3 solitaire.py -e "HOLD DOGE COIN. 2021" | xargs python3 solitaire.py -d`       
+     
+![Encrypt and Decrypt](https://i.imgur.com/k43mPtG.png)         
+ 
+ 
 ### References
 [Solitaire Encryption Algorithm](https://www.schneier.com/academic/solitaire/)   
 [Solitaire Algorithm Simplified](http://nifty.stanford.edu/2006/mccann-sssolitaire/SSSolitaire.pdf)
