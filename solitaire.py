@@ -1,21 +1,30 @@
 # Algoritmo Solitaire
 from pathlib import Path
+import argparse
 
 INITIAL_LETTER = ord('A')
 BASE = 26
+VERBOSE = False
 
 # UTILITY
 # bp = boilerplate
-def LOG_FORMAT(msg, bp=''):
+# * You can override verbose flag
+def LOG(msg, bp='', v=None):
+    v = VERBOSE if v is None else v
+    output = f'[+] {bp} {msg}'
+    if v:
+        print(output)
+
+def LOG_FORMAT(msg, bp='', v=None):
     i = 0
-    output = f'[+] {bp}'
+    output = ''
     for c in msg:
         mod = i % 5
-        if mod == 0:
+        if mod == 0 and i != 0:
             output += ' '
         output += c
         i += 1
-    print(output)
+    LOG(msg=output, bp=bp, v=v)
 
 # when 'B', num=2, B_ascii=INITIAL_LETTER+num-1
 def convert_to_letter(num):
@@ -36,9 +45,9 @@ def convert_to_nums(msg):
 # pads msg with 'X's to a multiple of 5
 def convert_to_padded_msg(msg):
     msg_caps = ''.join([c.upper() for c in msg if c.isalpha()])
-    LOG_FORMAT(msg_caps, bp='!Padding:')
+    LOG_FORMAT(msg_caps, bp=' !Padding:')
     msg_padded = msg_caps + ''.join(['X' for _ in range(5 - len(msg_caps) % 5)])
-    LOG_FORMAT(msg_padded, bp=' Padding:')
+    LOG_FORMAT(msg_padded, bp='  Padding:')
     return msg_padded
 
 # remove everything but letters
@@ -68,7 +77,7 @@ class Deck(object):
         self.curr_keystream = -1
         self.keystreams = []
         self.passphrase = filter_string(Reader.leer_archivo(Path("./passphrase.txt")).replace(' ', ''))
-        print(f"[+]   LOADED Deck: {self.cartas} | Size: {self.size}")
+        LOG(msg=f"{self.cartas} | Size: {self.size}", bp="  LOADED Deck:")
 
     def set_deck(self, arr):
         self.joker_1 = 53
@@ -109,7 +118,6 @@ class Deck(object):
         left = self.cartas[0:fir_joker]
         mid = self.cartas[fir_joker:sec_joker+1]
         right = self.cartas[sec_joker+1:self.size] # What if sec_joker is == to self.size-1? => returns []
-        # print(f"L{left}\nM{mid}\nR{right}")
         self.set_deck(right + mid + left)
 
     # bring top N cards to bot-1
@@ -135,7 +143,7 @@ class Deck(object):
             self.step3()
             self.step4()
             self.step4_5(convert_to_num(c))
-        print(f"[+] SHUFFLED Deck: {self.cartas}")
+        LOG(msg=self.cartas, bp='SHUFFLED Deck:')
 
     def step1(self):
         i = self.cartas.index(self.joker_1)
@@ -183,7 +191,6 @@ class Runner(object):
             self.deck.step4()
             # self.deck.step4_5() # sec passphrase <= mistake, only use on shuffle
             keep_trying = not self.deck.step5()
-        # print(f"Keystream: {self.deck.get_curr_keystream()}\n{self.deck.cartas}")
     
     def gen_n_keystreams(self, n, reset_deck=False):
         if reset_deck:
@@ -191,7 +198,7 @@ class Runner(object):
             self.deck.shuffle()
         for _ in range(n):
             self.run()
-        print(f"[+] {0 if n < 0 else n} keystreams generated.")
+        LOG(msg=f"{0 if n < 0 else n} keystreams generated.", bp='Solitaire:')
         return self.deck.keystreams.copy()
 
     def gen_missing_keystreams(self, msg_padded, gen_new_keystreams=False):
@@ -205,7 +212,7 @@ class Runner(object):
     # new_keystreams=True => resets deck, shuffles, and gens new keystreams
     def encode(self, msg, gen_new_keystreams=False):
         encoded_msg_arr = []
-        print(f'[+] Encoding: {msg}.')
+        LOG(msg=f'{msg}.', bp=' Encoding:')
         msg_padded = convert_to_padded_msg(msg)
         keystreams = self.gen_missing_keystreams(msg_padded, gen_new_keystreams)
         nums_arr = convert_to_nums(msg_padded)
@@ -215,7 +222,7 @@ class Runner(object):
             summ = convert_to_base(summ)
             encoded_msg_arr.append(convert_to_letter(summ))
         output = ''.join(encoded_msg_arr)
-        LOG_FORMAT(output, bp=' Encoded:')
+        LOG_FORMAT(output, bp='  Encoded:', v=True)
         return output
 
     # new_keystreams=True => resets deck, shuffles and gens new keystreams
@@ -229,11 +236,46 @@ class Runner(object):
             subtr = convert_to_base(subtr)
             decoded_msg_arr.append(convert_to_letter(subtr))
         output = ''.join(decoded_msg_arr)
-        LOG_FORMAT(output, bp=' Decoded:')
+        LOG_FORMAT(output, bp='  Decoded:', v=True)
         return output
 
+    def encrypt_decrypt(self, msg, wants_encrypt):
+        return self.encode(msg) if wants_encrypt else self.decode(msg)
 
-if __name__ == "__main__":
+def main():
+    # CLI-stuff
+    parser = argparse.ArgumentParser(description='Solitaire Encryption Algorithm by aaron')
+
+    parser.add_argument('message',
+                        metavar='msg', type=str, action='store',
+                        default='Mensaje super secreto.',
+                        help="Message to be encrypted/decrypted")
+
+    parser.add_argument('-e', '--encrypt',
+                        default=False, action='store_true',
+                        help='If this flag is set, the message will be encrypted.')
+
+    parser.add_argument('-d', '--decrypt',
+                        default=False, action='store_true',
+                        help='If this flag is set, the message will be decrypted.')
+
+    parser.add_argument('-v', '--verbose',
+                        default=False, action='store_true',
+                        help='If this flag is set, console will be more verbose.')
+
+    args = parser.parse_args()
+    if not (args.encrypt or args.decrypt):
+        parser.error('One of --encrypt or --decrypt must be given.')
+    if args.verbose:
+        global VERBOSE
+        VERBOSE = args.verbose
+
     d = Deck()
     d.shuffle()
     r = Runner(d)
+
+    result_msg = r.encrypt_decrypt(args.message, args.encrypt)
+    return result_msg
+
+if __name__ == "__main__":
+    main()
