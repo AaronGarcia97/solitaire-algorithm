@@ -44,14 +44,14 @@ def convert_to_nums(msg):
 
 # pads msg with 'X's to a multiple of 5
 def convert_to_padded_msg(msg):
-    msg_caps = ''.join([c.upper() for c in msg if c.isalpha()])
+    msg_caps = sanitize_msg(msg) 
     LOG_FORMAT(msg_caps, bp=' !Padding:')
     msg_padded = msg_caps + ''.join(['X' for _ in range(5 - len(msg_caps) % 5)])
     LOG_FORMAT(msg_padded, bp='  Padding:')
     return msg_padded
 
-# remove everything but letters
-def filter_string(s):
+# remove everything but letters, and make them caps
+def sanitize_msg(s):
     return ''.join([c.upper() for c in s if c.isalpha()])
 
 
@@ -76,7 +76,7 @@ class Deck(object):
         self.initial_cartas = self.cartas.copy()
         self.curr_keystream = -1
         self.keystreams = []
-        self.passphrase = filter_string(Reader.leer_archivo(Path("./passphrase.txt")).replace(' ', ''))
+        self.passphrase = sanitize_msg(Reader.leer_archivo(Path("./passphrase.txt")).replace(' ', ''))
         LOG(msg=f"{self.cartas} | Size: {self.size}", bp="  LOADED Deck:")
 
     def set_deck(self, arr):
@@ -222,12 +222,13 @@ class Runner(object):
             summ = convert_to_base(summ)
             encoded_msg_arr.append(convert_to_letter(summ))
         output = ''.join(encoded_msg_arr)
-        LOG_FORMAT(output, bp='  Encoded:', v=True)
+        LOG_FORMAT(output, bp='  Encoded:') 
         return output
 
     # new_keystreams=True => resets deck, shuffles and gens new keystreams
     def decode(self, msg, gen_new_keystreams=False):
         decoded_msg_arr = []
+        msg = sanitize_msg(msg)
         nums_arr = convert_to_nums(msg)
         keystreams = self.gen_missing_keystreams(msg, gen_new_keystreams)
         for i in range(len(nums_arr)):
@@ -236,7 +237,7 @@ class Runner(object):
             subtr = convert_to_base(subtr)
             decoded_msg_arr.append(convert_to_letter(subtr))
         output = ''.join(decoded_msg_arr)
-        LOG_FORMAT(output, bp='  Decoded:', v=True)
+        LOG_FORMAT(output, bp='  Decoded:') 
         return output
 
     def encrypt_decrypt(self, msg, wants_encrypt):
@@ -275,6 +276,7 @@ def main():
     r = Runner(d)
 
     result_msg = r.encrypt_decrypt(args.message, args.encrypt)
+    print(result_msg, end='')
     return result_msg
 
 if __name__ == "__main__":
